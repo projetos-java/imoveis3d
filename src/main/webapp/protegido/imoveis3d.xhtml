@@ -1,0 +1,241 @@
+<ui:composition template="../resources/templates/template.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui" xmlns:h="http://xmlns.jcp.org/jsf/html">
+
+
+    <ui:define name="title">
+        Sistema de Imoveis 3D
+    </ui:define>
+    <ui:define name="body">
+
+        <div class="content">
+
+            <!-- Main jumbotron for a primary marketing message or call to action -->
+            <div class="container">
+                <!-- Example row of columns -->
+                <div class="row">
+
+                    <script src="../resources/js/DatGui/dat.gui.js"></script>
+
+                    <div style="position: absolute;" id="opts"></div>
+
+                    <script type="text/javascript">
+
+                        var controlsBox = {w: 1, h: 1, d: 0.26};
+
+                        var gui = new dat.GUI();
+                        gui.add(controlsBox, 'w', -30, 30).step(1);
+                        gui.add(controlsBox, 'h', -1, 30).step(1);
+                        gui.add(controlsBox, 'd', -30, 30).step(1);
+                        //gui.add(controlsBox, 'q',-30,30).step(1);
+
+                        var customContainer = document.getElementById('opts');
+                        customContainer.appendChild(gui.domElement);
+
+                    </script>
+
+                    <div id="render" style="overflow:hidden"></div>
+                </div>
+            </div>
+
+            <!-- /container -->
+            <script src="../resources/js/three.min.js"></script>
+            <script src="../resources/js/OrbitControls.js"></script>
+            <script src="../resources/js/ColladaLoader.js"></script>
+
+
+            <script>
+                /******************************* variaveis *******************/
+                    //Preparando o render
+                var Render = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
+                Render.shadowMapEnabled = true;
+                //O cenario
+                var Escenario = new THREE.Scene();
+                var teclado = new THREEx.KeyboardState();
+                // A Figura
+                var Figura;
+                var controls;
+                var Ancho = window.innerWidth - 150;
+                var Alto = window.innerHeight - 60;
+
+                var Angulo = 45;
+                var Aspecto = Ancho / Alto;
+                var cerca = 0.1;
+                var lejos = 10000;
+
+                //A camera
+                var Camara = new THREE.PerspectiveCamera(Angulo, Aspecto, cerca, lejos);
+                THREEx.WindowResize(Render, Camara);
+
+                //modelos 3D
+                var modeloatualiza1 = "../2-floor-house.dae";
+                var modeloatualiza2 = "japanese-house.dae";
+                var modeloAtual = "";//verificar isso aqui
+                /******************************* inicio *******************/
+                function inicio() {
+                    //Tamanho do render(resultado)
+                    Render.setSize(Ancho, Alto);
+                    Render.setClearColor(0xbfd1e5);
+                    //Se agrega ao render e ao documento html
+                    document.getElementById('render').appendChild(Render.domElement);
+                    //Acertamos a camera em z e profundidade
+                    Camara.position.z = 100;
+                    Camara.position.y = 50;
+                    Camara.position.x = 100;
+                    //agregando la cámara al escenario
+                    Escenario.add(Camara);
+                    // agregamos todo el escenario y la cámara al render
+                    controls = new THREE.OrbitControls(Camara, Render.domElement);
+                }
+
+                function crear_plano() {
+                    //Geometría do plano
+                    Geometria_plano = new THREE.PlaneGeometry(100, 100, 10, 10);
+                    //Textura
+                    Textura_plano = new THREE.ImageUtils.loadTexture("../texturas/cesped1.jpg");
+                    Textura_plano.wrapS = Textura_plano.wrapT = THREE.RepeatWrapping;
+                    Textura_plano.repeat.set(10, 10);
+                    // Material e agregados da textura
+                    Material_plano = new THREE.MeshBasicMaterial({map: Textura_plano, side: THREE.DoubleSide});
+                    // O plano (Territorio)
+                    Territorio = new THREE.Mesh(Geometria_plano, Material_plano);
+                    Territorio.rotation.x = Math.PI / 2;
+                    Territorio.receiveShadow = true;
+
+                    Escenario.add(Territorio);
+                    Axis = new THREE.AxisHelper(100, 100, 100);
+                    Escenario.add(Axis);
+                }
+                crear_plano();
+                $("#textura1").click(function () {
+
+                    Textura_plano = new THREE.ImageUtils.loadTexture("../texturas/cesped1.jpg");
+
+                });
+
+                $("#textura2").click(function () {
+
+                    Textura_plano = new THREE.ImageUtils.loadTexture("../texturas/cesped.jpg");
+
+                });
+                // carregar novos modelos
+                function animacion() {
+
+                    requestAnimationFrame(animacion);
+                    render_modelo();
+                    if (typeof modelodae != "undefined") {
+                        tiempo = 0.01;
+                        distancia = 10;
+                        recorrido = distancia * tiempo;
+
+                        obj_mov = modelodae;
+
+                        if (teclado.pressed("up")) {
+                            obj_mov.position.z += recorrido;
+
+                        }
+                        if (teclado.pressed("down")) {
+                            obj_mov.position.z -= recorrido;
+
+                        }
+                        if (teclado.pressed("left")) {
+                            obj_mov.position.x += recorrido;
+                        }
+                        if (teclado.pressed("right")) {
+                            obj_mov.position.x -= recorrido;
+                        }
+                        //rotação
+                        tiempo_rotacion = 0.001;
+                        distancia = 8;
+                        recorrido_rotacion = distancia * tiempo_rotacion;
+                        /*if(teclado.pressed("z")){
+                         obj_mov.rotation.z+=recorrido_rotacion;
+                         }*/
+                        if (teclado.pressed("x")) {
+                            obj_mov.rotation.x -= recorrido_rotacion;
+                        }
+                        if (teclado.pressed("z")) {
+                            obj_mov.rotation.y += recorrido_rotacion;
+                        }
+
+                        controls.target.set(obj_mov.position.x, obj_mov.position.y, obj_mov.position.z);
+                    }
+                    if (typeof modelodae != "undefined") {
+                        modelodae.position.set(controlsBox.w, controlsBox.h, controlsBox.d);
+
+                    }
+
+                }
+                function render_modelo() {
+                    controls.update();
+                    Render.render(Escenario, Camara);
+                }
+                /**************************lniciado as funções ******************/
+
+                    //caregar modelo dae do google sketchup
+                var JsonModeloDDAE = new THREE.ColladaLoader();
+                JsonModeloDDAE.load(modeloatualiza1, funcionAgregarModelo);
+
+                function funcionAgregarModelo(infodae) {
+                    modelodae = infodae.scene;
+                    modelodae.position.set(10, 1, 10);
+                    modelodae.scale.x = modelodae.scale.y = modelodae.scale.z = 10;
+                    modelodae.rotation.z = Math.PI / 180;
+                    modelodae.rotation.x = Math.PI / 180;
+                    Escenario.add(modelodae);
+                    modelodae.scale.set(0.15, 0.15, 0.15);
+                    //modelodae.scale.set(4,4,4);
+                    modelodae.castShadow = true;
+                    //modelodae.receiveShadow=true;
+                }
+
+
+                Luz();
+
+                function Luz() {
+                    var luz = new THREE.PointLight(0xffffff);
+                    luz.position.set(-100, 200, 100);
+                    Escenario.add(luz);
+                    //luz de ambiente
+                    var Luzambiente = new THREE.AmbientLight(0x000000);
+                    Escenario.add(Luzambiente);
+                    // más luz
+                    var sunlight = new THREE.DirectionalLight();
+                    sunlight.position.set(500, 500, -500);
+                    sunlight.intensity = 1.3;
+
+
+                    sunlight.castShadow = true;
+                    sunlight.shadowCameraVisible = false;
+
+                    sunlight.shadowCameraNear = 250;
+                    sunlight.shadowCameraFar = 20000;
+
+                    intensidad = 50;
+
+                    sunlight.shadowCameraLeft = -intensidad;
+                    sunlight.shadowCameraRight = intensidad;
+                    sunlight.shadowCameraTop = intensidad;
+                    sunlight.shadowCameraBottom = -intensidad;
+
+                    Escenario.add(sunlight);
+
+                }
+                inicio();
+
+                animacion();
+
+                $('#printimg').click(function () {
+                    window.open(Render.domElement.toDataURL('image/png'), 'Final');
+                    return false;
+                });
+
+
+            </script>
+        </div>
+
+    </ui:define>
+
+</ui:composition>
+
